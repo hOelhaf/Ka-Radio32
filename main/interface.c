@@ -426,7 +426,8 @@ void clientParseUrl(char* s)
         for(tmp=0; tmp<(t_end-t+1); tmp++) url[tmp] = 0;
         strncpy(url, t+2, (t_end-t));
         clientSetURL(url);
-		char* title = malloc(88);
+//		char* title = malloc(88);
+		char* title = malloc(strlen(url)+13);
 		sprintf(title,"{\"iurl\":\"%s\"}",url); 
 		websocketbroadcast(title, strlen(title));
 		free(title);		
@@ -454,7 +455,8 @@ void clientParsePath(char* s)
         strncpy(path, t+2, (t_end-t));
 //kprintf("cli.path: %s\n",path);
         clientSetPath(path);
-		char* title = malloc(130);
+//		char* title = malloc(130);
+		char* title = malloc(strlen(path)+14);
 		sprintf(title,"{\"ipath\":\"%s\"}",path); 
 		websocketbroadcast(title, strlen(title));
 		free(title);		
@@ -482,7 +484,7 @@ void clientParsePort(char *s)
         strncpy(port, t+2, (t_end-t));
         uint16_t porti = atoi(port);
         clientSetPort(porti);
-		char* title = malloc(130);
+		char* title = malloc(24);
 		sprintf(title,"{\"iport\":\"%d\"}",porti); 
 		websocketbroadcast(title, strlen(title));
 		free(title);		
@@ -571,14 +573,23 @@ void clientList(char *s)
 // parse url
 bool parseUrl(char* src, char* url, char* path, uint16_t *port)
 {
-	char* teu,*tbu,*tbpa;
+	char* teu,*tbu,*tbus,*tbpa;
 	char* tmp = src;
-	tmp = strstr(src,"://");
-	if (tmp) tmp +=3;
-	else tmp = src;
-	tbu = tmp;
+	// https?
+	tmp = strstr(src,"https://");
+	if (!tmp) tmp = strstr(src,"HTTPS://");
+	if (tmp) {tbu = src; tbus = tbu+8;}
+	else  // http://  remove http://
+	{
+		tmp = strstr(src,"://");
+		if (tmp) tmp +=3;
+		else tmp = src;
+		tbu = tmp;
+		tbus = tbu;
+	}
 //printf("tbu: %s\n",tbu);
-	teu = strchr(tbu,':');
+	teu = strchr(tbus,':');
+	tmp = tbus;
 	if (teu)
 	{
 		tmp = teu+1;
@@ -600,6 +611,8 @@ bool parseUrl(char* src, char* url, char* path, uint16_t *port)
 }
 
 //edit a station
+// format:  cli.edit("num:Name,url:port/path{%offsetVol}
+// example: cli.edit("229:Hotmix Funky,http://streaming.hotmix-radio.net:80/hotmixradio-funky-128.mp3%0")
 void clientEdit(char *s)
 {
 struct shoutcast_info* si;
@@ -642,7 +655,7 @@ char url[200];
 	if (url[0] != 0)
 		parseUrl(url, si->domain, si->file, &(si->port));
 	
-//printf(" id: %d, name: %s, url: %s, port: %d, path: %s\n",id,si->name,si->domain,si->port,si->file);
+kprintf(" id: %d, name: %s, url: %s, port: %d, path: %s\n",id,si->name,si->domain,si->port,si->file);
 	if (id < 0xff) {
 		if (si->domain[0]==0) {si->port = 0;si->file[0] = 0;}
 		saveStation(si, id); 
